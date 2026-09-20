@@ -13,6 +13,13 @@ interface VideoItem {
   marks: string[];
 }
 
+interface TimelineMarkerGroup {
+  timeSeconds: number;
+  percent: number;
+  labels: string[];
+  firstTimeValue: string;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -27,7 +34,10 @@ export class App implements OnInit {
   
   currentVideo: VideoItem | null = null;
   videoDuration: number = 0;
+  videoCurrentTime: number = 0;
   playbackSpeed: number = 1;
+  jumpSeconds: number = 5;
+  hoveredMarkerIndex: number | null = null;
 
   @ViewChild('videoPlayer') videoPlayerRef!: ElementRef<HTMLVideoElement>;
 
@@ -37,7 +47,6 @@ export class App implements OnInit {
     this.loadDefaultFolder();
   }
 
-  // Ouvinte global para atalhos de teclado (Espaço e teclas de 0 a 9)
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     if (!this.currentVideo) return;
@@ -47,7 +56,6 @@ export class App implements OnInit {
       return;
     }
 
-    // Tecla Espaço: Play / Pause
     if (event.code === 'Space') {
       event.preventDefault();
       if (this.videoPlayerRef) {
@@ -61,7 +69,18 @@ export class App implements OnInit {
       return;
     }
 
-    // Teclas de 0 a 9 para os Marks
+    if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+      event.preventDefault();
+      if (this.videoPlayerRef) {
+        const videoEl = this.videoPlayerRef.nativeElement;
+        const direction = event.code === 'ArrowLeft' ? -1 : 1;
+        let newTime = videoEl.currentTime + (direction * this.jumpSeconds);
+        newTime = Math.max(0, Math.min(this.videoDuration, newTime));
+        videoEl.currentTime = newTime;
+      }
+      return;
+    }
+
     const keyMatch = event.code.match(/^(?:Digit|Numpad)([0-9])$/);
     if (keyMatch) {
       const index = parseInt(keyMatch[1], 10);
@@ -204,6 +223,9 @@ export class App implements OnInit {
   playVideo(item: VideoItem) {
     this.currentVideo = item;
     this.playbackSpeed = 1;
+    this.videoCurrentTime = 0;
+    this.jumpSeconds = 5;
+    this.hoveredMarkerIndex = null;
     this.cdr.detectChanges();
   }
 
@@ -219,11 +241,64 @@ export class App implements OnInit {
     videoElement.playbackRate = this.playbackSpeed;
   }
 
+  onTimeUpdate(event: Event) {
+    const videoElement = event.target as HTMLVideoElement;
+    this.videoCurrentTime = videoElement.currentTime;
+  }
+
+  parseMarkToSeconds(markValue: string): number {
+    if (!markValue) return 0;
+    let val = markValue.trim();
+    if (val.includes(':')) {
+      const parts = val.split(':');
+      const mins = parseInt(parts[0], 10) || 0;
+      const secs = parseInt(parts[1], 10) || 0;
+      return mins * 60 + secs;
+    }
+    return parseFloat(val) || 0;
+  }
+
+  getTimelineMarkerGroups(): TimelineMarkerGroup[] {
+    if (!this.currentVideo || !this.videoDuration || this.videoDuration <= 0) return [];
+
+    const map = new Map<number, { labels: string[]; firstTimeValue: string }>();
+
+    this.currentVideo.marks.forEach((mark, index) => {
+      const seconds = this.parseMarkToSeconds(mark);
+      if (seconds <= 0 || seconds >= this.videoDuration) return;
+
+      const roundedSeconds = Math.round(seconds);
+
+      if (!map.has(roundedSeconds)) {
+        map.set(roundedSeconds, { labels: [], firstTimeValue: mark });
+      }
+      map.get(roundedSeconds)!.labels.push(`#${index}`);
+    });
+
+    const groups: TimelineMarkerGroup[] = [];
+    map.forEach((value, timeSeconds) => {
+      const percent = (timeSeconds / this.videoDuration) * 100;
+      groups.push({
+        timeSeconds,
+        percent: Math.max(0, Math.min(100, percent)),
+        labels: value.labels,
+        firstTimeValue: value.firstTimeValue
+      });
+    });
+
+    return groups;
+  }
+
   setPlaybackSpeed(speed: number) {
     this.playbackSpeed = speed;
     if (this.videoPlayerRef) {
       this.videoPlayerRef.nativeElement.playbackRate = speed;
     }
+    this.cdr.detectChanges();
+  }
+
+  setJumpSeconds(seconds: number) {
+    this.jumpSeconds = seconds;
     this.cdr.detectChanges();
   }
 
@@ -262,10 +337,7 @@ export class App implements OnInit {
 
   jumpToMark(markValue: string) {
     if (!this.videoPlayerRef) return;
-    const parts = markValue.split(':');
-    const mins = parseInt(parts[0], 10) || 0;
-    const secs = parseInt(parts[1], 10) || 0;
-    const totalSeconds = mins * 60 + secs;
+    const totalSeconds = this.parseMarkToSeconds(markValue);
 
     const videoEl = this.videoPlayerRef.nativeElement;
     const wasPlaying = !videoEl.paused;

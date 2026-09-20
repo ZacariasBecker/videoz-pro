@@ -80,17 +80,58 @@
         <div
           class="rounded overflow-hidden flex-grow-1 d-flex align-items-center justify-content-center position-relative h-100"
           style="background-color: #0f0f0f;">
-          <!-- Adicionado (keydown.space)="$event.preventDefault()" para evitar conflito com o atalho global -->
-          <video #videoPlayer [src]="currentVideo.videoUrl" controls (loadedmetadata)="onMetadataLoaded($event)"
-            (keydown.space)="$event.preventDefault()" class="w-100 h-100 object-fit-contain"
-            style="outline: none; background-color: #000;">
-            Seu navegador não suporta a reprodução de vídeo.
-          </video>
+
+          <div class="w-100 h-100 position-relative d-flex align-items-center justify-content-center">
+            <video #videoPlayer [src]="currentVideo.videoUrl" controls (loadedmetadata)="onMetadataLoaded($event)"
+              (timeupdate)="onTimeUpdate($event)" (keydown.space)="$event.preventDefault()"
+              class="w-100 h-100 object-fit-contain" style="outline: none; background-color: #000;">
+              Seu navegador não suporta a reprodução de vídeo.
+            </video>
+
+            <!-- Barra de Marcações Amarelas -->
+            <div class="position-absolute start-0 w-100 px-4 pointer-events-none" style="bottom: 50px; z-index: 5;">
+              <div class="position-relative w-100" style="height: 22px;">
+                <div *ngFor="let group of getTimelineMarkerGroups(); let i = index"
+                  class="position-absolute top-0 translate-middle-x d-flex flex-column align-items-center cursor-pointer pointer-events-auto"
+                  [style.left.%]="group.percent" [style.z-index]="hoveredMarkerIndex === i ? 100 : (10 + i)"
+                  (mouseenter)="hoveredMarkerIndex = i" (mouseleave)="hoveredMarkerIndex = null"
+                  (click)="jumpToMark(group.firstTimeValue)"
+                  title="Tempo: {{ group.firstTimeValue }} (Marcadores: {{ group.labels.join(', ') }})">
+
+                  <div
+                    class="d-flex align-items-center justify-content-center gap-1 bg-warning text-dark fw-bold px-2 py-1 shadow-sm rounded"
+                    style="font-size: 0.85rem; white-space: nowrap;">
+                    <span *ngFor="let lbl of group.labels">{{ lbl }}</span>
+                  </div>
+
+                  <div class="bg-warning shadow-sm" style="width: 2px; height: 8px;"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </div>
 
-      <!-- Coluna Direita (Velocidade + Marks) -->
+      <!-- Coluna Direita (Jump + Velocidade + Marks) -->
       <div class="col-lg-3 col-md-4 h-100 d-flex flex-column gap-3">
+
+        <!-- Controle de Jump -->
+        <div class="p-3 rounded" style="background-color: #0f0f0f;">
+          <div class="text-white fw-bold small mb-2">
+            <i class="bi bi-skip-forward-fill me-2 text-secondary"></i> Jump (Segundos)
+          </div>
+          <div class="row g-1">
+            <div class="col" *ngFor="let sec of [1, 2, 3, 4, 5]">
+              <button class="w-100 btn btn-sm border-0 text-white py-1 text-center"
+                [style.background-color]="jumpSeconds === sec ? '#3a3a3a' : '#181818'" style="font-size: 0.8rem;"
+                (click)="setJumpSeconds(sec)">
+                {{ sec }}s
+              </button>
+            </div>
+          </div>
+        </div>
 
         <!-- Controle de Velocidade -->
         <div class="p-3 rounded" style="background-color: #0f0f0f;">
@@ -108,7 +149,7 @@
           </div>
         </div>
 
-        <!-- Seção Marks à Direita -->
+        <!-- Seção Marks à Direita (Com input e botão Play esmaecidos quando 00:00) -->
         <div class="h-100 d-flex flex-column overflow-hidden rounded" style="background-color: #0f0f0f;">
           <div class="py-2 px-3 text-white fw-bold small mb-2" style="background-color: #121212;">
             <i class="bi bi-bookmark-fill me-2 text-secondary"></i> Marks
@@ -119,10 +160,12 @@
               style="background-color: #181818;">
               <span class="text-secondary small fw-bold me-2">#{{ i }}</span>
               <input type="text"
-                class="form-control form-control-sm bg-transparent text-white border-0 text-center p-0 shadow-none fw-bold"
+                class="form-control form-control-sm bg-transparent border-0 text-center p-0 shadow-none fw-bold"
+                [ngClass]="mark === '00:00' || !mark ? 'text-secondary' : 'text-white'"
                 [(ngModel)]="currentVideo.marks[i]" (blur)="validateMark(i)"
                 style="width: 70px; font-family: monospace; font-size: 0.9rem;" />
-              <button class="btn btn-sm text-white border-0 py-0 px-2 ms-2 bg-transparent"
+              <button class="btn btn-sm border-0 py-0 px-2 ms-2 bg-transparent"
+                [ngClass]="mark === '00:00' || !mark ? 'text-secondary' : 'text-white'"
                 (click)="jumpToMark(currentVideo.marks[i])" title="Ir para este tempo">
                 <i class="bi bi-play-fill fs-6"></i>
               </button>
