@@ -80,8 +80,10 @@
         <div
           class="rounded overflow-hidden flex-grow-1 d-flex align-items-center justify-content-center position-relative h-100"
           style="background-color: #0f0f0f;">
+          <!-- Adicionado (keydown.space)="$event.preventDefault()" para evitar conflito com o atalho global -->
           <video #videoPlayer [src]="currentVideo.videoUrl" controls (loadedmetadata)="onMetadataLoaded($event)"
-            class="w-100 h-100 object-fit-contain" style="outline: none; background-color: #000;">
+            (keydown.space)="$event.preventDefault()" class="w-100 h-100 object-fit-contain"
+            style="outline: none; background-color: #000;">
             Seu navegador não suporta a reprodução de vídeo.
           </video>
         </div>

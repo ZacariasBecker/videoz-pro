@@ -37,6 +37,7 @@ export class App implements OnInit {
     this.loadDefaultFolder();
   }
 
+  // Ouvinte global para atalhos de teclado (Espaço e teclas de 0 a 9)
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     if (!this.currentVideo) return;
@@ -46,6 +47,7 @@ export class App implements OnInit {
       return;
     }
 
+    // Tecla Espaço: Play / Pause
     if (event.code === 'Space') {
       event.preventDefault();
       if (this.videoPlayerRef) {
@@ -59,6 +61,7 @@ export class App implements OnInit {
       return;
     }
 
+    // Teclas de 0 a 9 para os Marks
     const keyMatch = event.code.match(/^(?:Digit|Numpad)([0-9])$/);
     if (keyMatch) {
       const index = parseInt(keyMatch[1], 10);
