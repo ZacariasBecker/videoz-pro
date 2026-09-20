@@ -1,0 +1,227 @@
+<!-- Barra de Navegação Superior com o Botão de Selecionar Pasta -->
+<nav class="navbar px-4 py-3" style="background-color: #0f0f0f;">
+  <div class="container-fluid">
+    <span class="navbar-brand mb-0 h1 fw-bold fs-4 d-flex align-items-center text-white">
+      <i class="bi bi-download me-3"></i> Videoz Pro
+    </span>
+
+    <div>
+      <button class="btn text-white border-0 px-3 py-2" style="background-color: #272727;" (click)="selectFolder()">
+        <i class="bi bi-folder2-open me-2"></i> Selecionar Pasta
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Container Principal Dinâmico -->
+<div class="container-fluid py-4 px-4 text-white" style="min-height: calc(100vh - 70px); background-color: #0f0f0f;">
+
+  <!-- Seção de Boas-Vindas Inicial -->
+  <div class="text-center my-5 py-5" *ngIf="!folderPath && !errorMessage">
+    <h2 class="fw-normal mb-2 text-white">Gerenciador de Vídeos</h2>
+    <p class="text-secondary mb-4">Clique no botão "Selecionar Pasta" no canto superior direito para carregar seus
+      arquivos locais.</p>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert border-0 mt-4 text-center text-white" style="background-color: #1a1a1a;"
+    role="alert">
+    <i class="bi bi-exclamation-triangle me-2"></i> {{ errorMessage }}
+  </div>
+
+  <!-- Tela de Exibição do Vídeo com Seção Marks à Direita -->
+  <div *ngIf="currentVideo" class="w-100 d-flex flex-column" style="height: calc(100vh - 120px);">
+
+    <!-- Barra Superior do Player com Rótulos Dinâmicos durante a Edição -->
+    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+      <div class="d-flex align-items-center flex-grow-1 me-3">
+        <button class="btn text-white border-0 px-2 py-2 me-3" style="background-color: #272727;"
+          (click)="closePlayer()" title="Voltar">
+          <i class="bi bi-arrow-left fs-5"></i>
+        </button>
+
+        <!-- Modo Visualização (Limpo) -->
+        <h1 *ngIf="!currentVideo.isEditing" class="fw-bold text-white m-0 text-truncate" style="font-size: 1.4rem;">
+          {{ currentVideo.artist }} - {{ currentVideo.music }}
+        </h1>
+
+        <!-- Modo Edição com os rótulos Artist: e Music: -->
+        <div *ngIf="currentVideo.isEditing" class="d-flex align-items-center gap-3 w-100 me-4">
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-secondary small fw-bold">Artist:</span>
+            <input type="text" class="form-control form-control-sm text-white border-0 fw-bold"
+              style="background-color: #181818; width: 180px;" [(ngModel)]="currentVideo.artist"
+              (blur)="saveConfigToJson()" placeholder="Nome do artista">
+          </div>
+
+          <div class="d-flex align-items-center gap-2 flex-grow-1">
+            <span class="text-secondary small fw-bold">Music:</span>
+            <input type="text" class="form-control form-control-sm text-white border-0 fw-bold flex-grow-1"
+              style="background-color: #181818;" [(ngModel)]="currentVideo.music" (blur)="saveConfigToJson()"
+              placeholder="Nome da música">
+          </div>
+        </div>
+
+        <!-- Botão de Engrenagem do Player -->
+        <button class="btn btn-sm border-0 ms-2"
+          [ngClass]="currentVideo.isEditing ? 'text-white bg-dark' : 'text-secondary bg-transparent'"
+          (click)="toggleEdit(currentVideo, $event)" title="Editar informações">
+          <i class="bi bi-gear-fill fs-5"></i>
+        </button>
+      </div>
+
+      <span class="text-secondary small flex-shrink-0">Reproduzindo mídia</span>
+    </div>
+
+    <!-- Layout Principal dividindo Player e Painel Lateral -->
+    <div class="row flex-grow-1 g-3 h-100 overflow-hidden">
+
+      <!-- Coluna do Vídeo -->
+      <div class="col-lg-9 col-md-8 h-100 d-flex flex-column">
+        <div
+          class="rounded overflow-hidden flex-grow-1 d-flex align-items-center justify-content-center position-relative h-100"
+          style="background-color: #0f0f0f;">
+          <video #videoPlayer [src]="currentVideo.videoUrl" controls (loadedmetadata)="onMetadataLoaded($event)"
+            class="w-100 h-100 object-fit-contain" style="outline: none; background-color: #000;">
+            Seu navegador não suporta a reprodução de vídeo.
+          </video>
+        </div>
+      </div>
+
+      <!-- Coluna Direita (Velocidade + Marks) -->
+      <div class="col-lg-3 col-md-4 h-100 d-flex flex-column gap-3">
+
+        <!-- Controle de Velocidade -->
+        <div class="p-3 rounded" style="background-color: #0f0f0f;">
+          <div class="text-white fw-bold small mb-2">
+            <i class="bi bi-speedometer2 me-2 text-secondary"></i> Velocidade
+          </div>
+          <div class="row g-1">
+            <div class="col-4" *ngFor="let speed of [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]">
+              <button class="w-100 btn btn-sm border-0 text-white py-1 text-center"
+                [style.background-color]="playbackSpeed === speed ? '#3a3a3a' : '#181818'" style="font-size: 0.8rem;"
+                (click)="setPlaybackSpeed(speed)">
+                {{ speed * 100 | number:'1.0-0' }}%
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção Marks à Direita -->
+        <div class="h-100 d-flex flex-column overflow-hidden rounded" style="background-color: #0f0f0f;">
+          <div class="py-2 px-3 text-white fw-bold small mb-2" style="background-color: #121212;">
+            <i class="bi bi-bookmark-fill me-2 text-secondary"></i> Marks
+          </div>
+          <div class="overflow-auto p-0 d-flex flex-column gap-2 flex-grow-1">
+            <div *ngFor="let mark of currentVideo.marks; let i = index; trackBy: trackByIndex"
+              class="d-flex align-items-center justify-content-between px-3 py-2 rounded"
+              style="background-color: #181818;">
+              <span class="text-secondary small fw-bold me-2">#{{ i }}</span>
+              <input type="text"
+                class="form-control form-control-sm bg-transparent text-white border-0 text-center p-0 shadow-none fw-bold"
+                [(ngModel)]="currentVideo.marks[i]" (blur)="validateMark(i)"
+                style="width: 70px; font-family: monospace; font-size: 0.9rem;" />
+              <button class="btn btn-sm text-white border-0 py-0 px-2 ms-2 bg-transparent"
+                (click)="jumpToMark(currentVideo.marks[i])" title="Ir para este tempo">
+                <i class="bi bi-play-fill fs-6"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Listagem Elegante Estilo YouTube -->
+  <div *ngIf="folderPath && !errorMessage && !currentVideo" class="mt-2" style="max-width: 1000px; margin: 0 auto;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 px-2">
+      <span class="text-secondary small">Pasta: {{ folderPath }}</span>
+      <span class="text-secondary small">{{ videos.length }} vídeo(s) encontrado(s)</span>
+    </div>
+
+    <div class="d-flex flex-column gap-3 mt-3">
+
+      <!-- Linha de cada vídeo -->
+      <div *ngFor="let video of videos" class="position-relative d-flex flex-row align-items-start py-2 pe-3 rounded"
+        style="transition: background-color 0.2s;">
+
+        <!-- Botão de Engrenagem -->
+        <div class="position-absolute top-0 end-0 mt-2 me-2" style="z-index: 10;">
+          <button class="btn btn-sm border-0"
+            [ngClass]="video.isEditing ? 'text-white bg-dark' : 'text-secondary bg-transparent'"
+            (click)="toggleEdit(video, $event)" title="Editar informações">
+            <i class="bi bi-gear-fill fs-6"></i>
+          </button>
+        </div>
+
+        <!-- Thumbnail -->
+        <div class="flex-shrink-0 me-3" style="cursor: pointer;" (click)="playVideo(video)">
+          <div class="position-relative rounded overflow-hidden d-flex align-items-center justify-content-center"
+            style="width: 160px; height: 90px; background-color: #181818;">
+            <img *ngIf="video.thumbnailUrl" [src]="video.thumbnailUrl" class="w-100 h-100 object-fit-cover"
+              alt="Thumbnail">
+            <div *ngIf="!video.thumbnailUrl" class="spinner-border spinner-border-sm text-secondary" role="status">
+            </div>
+            <div
+              class="position-absolute text-white bg-dark bg-opacity-75 rounded p-1 d-flex align-items-center justify-content-center"
+              style="width: 28px; height: 28px;">
+              <i class="bi bi-play-fill fs-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna de Informações -->
+        <div class="flex-grow-1 d-flex flex-column pe-5">
+
+          <div *ngIf="!video.isEditing" (click)="playVideo(video)" style="cursor: pointer;">
+            <h3 class="fw-bold text-white mb-1 text-truncate" style="font-size: 1.15rem; line-height: 1.3;"
+              title="{{ video.music }}">
+              {{ video.music }}
+            </h3>
+            <div class="text-secondary mb-1" style="font-size: 0.95rem;" title="{{ video.artist }}">
+              {{ video.artist }}
+            </div>
+            <div class="text-secondary text-truncate mt-1" style="font-size: 0.8rem; max-width: 100%;"
+              title="{{ video.fileName }}">
+              {{ video.fileName }}
+            </div>
+          </div>
+
+          <div *ngIf="video.isEditing" class="w-100">
+            <div class="row align-items-center mb-2">
+              <label class="col-auto text-secondary small fw-bold" style="width: 70px;">Artist:</label>
+              <div class="col">
+                <input type="text" class="form-control form-control-sm text-white border-0"
+                  style="background-color: #181818;" [(ngModel)]="video.artist" (blur)="saveConfigToJson()"
+                  placeholder="Nome do artista">
+              </div>
+            </div>
+
+            <div class="row align-items-center mb-2">
+              <label class="col-auto text-secondary small fw-bold" style="width: 70px;">Music:</label>
+              <div class="col">
+                <input type="text" class="form-control form-control-sm text-white border-0"
+                  style="background-color: #181818;" [(ngModel)]="video.music" (blur)="saveConfigToJson()"
+                  placeholder="Nome da música">
+              </div>
+            </div>
+
+            <div class="text-truncate text-secondary small mt-1" style="max-width: 100%;" title="{{ video.fileName }}">
+              <strong>file:</strong> <span class="text-white-50">{{ video.fileName }}</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="videos.length === 0" class="text-center p-5 text-secondary">
+      <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+      Nenhum vídeo .mp4 encontrado nesta pasta.
+    </div>
+
+  </div>
+
+</div>

@@ -1,0 +1,14 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+body {
+  background-color: #0f0f0f;
+  color: #ffffff;
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Efeito sutil ao passar o mouse na lista de vídeos */
+.list-group-item:hover {
+  background-color: #1a1a1a !important;
+}
